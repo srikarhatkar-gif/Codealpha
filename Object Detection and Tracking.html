@@ -1,0 +1,286 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Task 4 - Object Detection and Tracking</title>
+
+    <!-- TensorFlow.js -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
+
+    <!-- COCO-SSD Object Detection Model -->
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/coco-ssd"></script>
+
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #111827;
+            color: white;
+            text-align: center;
+        }
+
+        h1 {
+            margin: 20px;
+            color: #38bdf8;
+        }
+
+        #container {
+            position: relative;
+            width: 800px;
+            max-width: 95%;
+            margin: auto;
+        }
+
+        video, canvas {
+            width: 100%;
+            border-radius: 10px;
+        }
+
+        video {
+            display: block;
+        }
+
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        button {
+            margin: 20px;
+            padding: 12px 25px;
+            border: none;
+            border-radius: 8px;
+            background: #22c55e;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #16a34a;
+        }
+
+        #status {
+            color: #facc15;
+            margin: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <h1>Task 4: Object Detection and Tracking</h1>
+
+    <p id="status">Loading AI model...</p>
+
+    <div id="container">
+        <video id="video" autoplay muted playsinline></video>
+        <canvas id="canvas"></canvas>
+    </div>
+
+    <button onclick="startCamera()">Start Camera</button>
+
+<script>
+
+const video = document.getElementById("video");
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+const statusText = document.getElementById("status");
+
+let model;
+
+// Object tracking data
+let objects = [];
+let nextID = 1;
+
+// Load model
+async function loadModel() {
+
+    statusText.innerText = "Loading object detection model...";
+
+    model = await cocoSsd.load();
+
+    statusText.innerText = "Model loaded. Click Start Camera.";
+}
+
+// Start webcam
+async function startCamera() {
+
+    try {
+
+        const stream = await navigator.mediaDevices.getUserMedia({
+            video: true,
+            audio: false
+        });
+
+        video.srcObject = stream;
+
+        video.onloadedmetadata = () => {
+
+            canvas.width = video.videoWidth;
+            canvas.height = video.videoHeight;
+
+            statusText.innerText =
+                "Camera started - Detecting and Tracking...";
+
+            detectObjects();
+        };
+
+    } catch (error) {
+
+        statusText.innerText =
+            "Camera permission denied or camera unavailable.";
+
+        console.error(error);
+    }
+}
+
+
+// Calculate center point
+function center(box) {
+
+    return {
+        x: box[0] + box[2] / 2,
+        y: box[1] + box[3] / 2
+    };
+}
+
+
+// Calculate distance between two points
+function distance(a, b) {
+
+    return Math.sqrt(
+        Math.pow(a.x - b.x, 2) +
+        Math.pow(a.y - b.y, 2)
+    );
+}
+
+
+// Object detection
+async function detectObjects() {
+
+    const predictions = await model.detect(video);
+
+    // Clear canvas
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    let currentObjects = [];
+
+    for (let prediction of predictions) {
+
+        // Ignore low confidence detections
+        if (prediction.score < 0.55)
+            continue;
+
+        const box = prediction.bbox;
+        const c = center(box);
+
+        let matched = null;
+        let minDistance = Infinity;
+
+        // Match detected object with previous object
+        for (let oldObject of objects) {
+
+            if (oldObject.className !== prediction.class)
+                continue;
+
+            const d = distance(c, oldObject.center);
+
+            if (d < 80 && d < minDistance) {
+
+                minDistance = d;
+                matched = oldObject;
+            }
+        }
+
+        let id;
+
+        if (matched) {
+            id = matched.id;
+        } else {
+            id = nextID++;
+        }
+
+        currentObjects.push({
+            id: id,
+            className: prediction.class,
+            score: prediction.score,
+            bbox: box,
+            center: c
+        });
+    }
+
+    objects = currentObjects;
+
+    // Draw detections
+    for (let obj of objects) {
+
+        const [x, y, width, height] = obj.bbox;
+
+        // Bounding box
+        ctx.strokeStyle = "#00ff00";
+        ctx.lineWidth = 3;
+        ctx.strokeRect(x, y, width, height);
+
+        // Label background
+        const label =
+            obj.className +
+            " | ID: " +
+            obj.id +
+            " | " +
+            Math.round(obj.score * 100) +
+            "%";
+
+        ctx.font = "16px Arial";
+
+        const textWidth =
+            ctx.measureText(label).width + 10;
+
+        ctx.fillStyle = "#00ff00";
+
+        ctx.fillRect(
+            x,
+            y - 25,
+            textWidth,
+            25
+        );
+
+        // Label text
+        ctx.fillStyle = "black";
+
+        ctx.fillText(
+            label,
+            x + 5,
+            y - 7
+        );
+
+        // Tracking center point
+        ctx.fillStyle = "red";
+
+        ctx.beginPath();
+
+        ctx.arc(
+            obj.center.x,
+            obj.center.y,
+            5,
+            0,
+            Math.PI * 2
+        );
+
+        ctx.fill();
+    }
+
+    // Continue detection
+    requestAnimationFrame(detectObjects);
+}
+
+
+// Load model when page opens
+loadModel();
+
+</script>
+
+</body>
+</html>
