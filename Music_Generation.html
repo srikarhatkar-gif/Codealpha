@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>AI Music Generation</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background: #f2f2f2;
+            text-align: center;
+            padding: 40px;
+        }
+
+        .container {
+            background: white;
+            width: 600px;
+            max-width: 90%;
+            margin: auto;
+            padding: 30px;
+            border-radius: 12px;
+            box-shadow: 0 0 10px gray;
+        }
+
+        h1 {
+            color: #333;
+        }
+
+        button {
+            padding: 12px 25px;
+            margin: 10px;
+            border: none;
+            border-radius: 6px;
+            background: #4CAF50;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+        }
+
+        button:hover {
+            background: #45a049;
+        }
+
+        #notes {
+            margin-top: 20px;
+            padding: 15px;
+            background: #f5f5f5;
+            border-radius: 8px;
+            min-height: 40px;
+        }
+
+        #status {
+            margin-top: 15px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>🎵 AI Music Generation</h1>
+
+    <p>
+        Generate a new music sequence using an AI-based
+        note pattern.
+    </p>
+
+    <button onclick="generateMusic()">
+        Generate Music
+    </button>
+
+    <button onclick="playMusic()">
+        ▶ Play Music
+    </button>
+
+    <button onclick="downloadMIDI()">
+        💾 Save as MIDI
+    </button>
+
+    <h3>Generated Notes</h3>
+
+    <div id="notes">
+        No music generated yet.
+    </div>
+
+    <div id="status"></div>
+
+</div>
+
+<script>
+
+let generatedNotes = [];
+
+let musicData = [
+    60, 62, 64, 65,
+    67, 69, 71, 72
+];
+
+function generateMusic() {
+
+    generatedNotes = [];
+
+    let currentNote = 60;
+
+    for (let i = 0; i < 40; i++) {
+
+        generatedNotes.push(currentNote);
+
+        let randomIndex =
+            Math.floor(Math.random() * musicData.length);
+
+        currentNote = musicData[randomIndex];
+    }
+
+    document.getElementById("notes").innerText =
+        generatedNotes.join(" - ");
+
+    document.getElementById("status").innerText =
+        "New music sequence generated successfully!";
+}
+
+
+function playMusic() {
+
+    if (generatedNotes.length === 0) {
+
+        alert("Please generate music first.");
+
+        return;
+    }
+
+    let audio = new AudioContext();
+
+    let time = audio.currentTime;
+
+    for (let i = 0; i < generatedNotes.length; i++) {
+
+        let oscillator = audio.createOscillator();
+
+        let gain = audio.createGain();
+
+        oscillator.frequency.value =
+            440 * Math.pow(
+                2,
+                (generatedNotes[i] - 69) / 12
+            );
+
+        oscillator.type = "sine";
+
+        oscillator.connect(gain);
+
+        gain.connect(audio.destination);
+
+        oscillator.start(time);
+
+        oscillator.stop(time + 0.25);
+
+        time += 0.25;
+    }
+
+    document.getElementById("status").innerText =
+        "Playing generated music...";
+}
+
+
+function downloadMIDI() {
+
+    if (generatedNotes.length === 0) {
+
+        alert("Please generate music first.");
+
+        return;
+    }
+
+    let midi = createMIDI(generatedNotes);
+
+    let blob = new Blob(
+        [midi],
+        { type: "audio/midi" }
+    );
+
+    let link = document.createElement("a");
+
+    link.href = URL.createObjectURL(blob);
+
+    link.download = "generated_music.mid";
+
+    link.click();
+
+    document.getElementById("status").innerText =
+        "MIDI file saved successfully!";
+}
+
+
+function createMIDI(notes) {
+
+    let track = [];
+
+    track.push(
+        0x00, 0xFF, 0x51, 0x03,
+        0x07, 0xA1, 0x20
+    );
+
+    for (let i = 0; i < notes.length; i++) {
+
+        track.push(
+            0x00,
+            0x90,
+            notes[i],
+            0x64
+        );
+
+        track.push(
+            0x60,
+            0x80,
+            notes[i],
+            0x00
+        );
+    }
+
+    track.push(
+        0x00,
+        0xFF,
+        0x2F,
+        0x00
+    );
+
+    let header = [
+        0x4D, 0x54, 0x68, 0x64,
+        0x00, 0x00, 0x00, 0x06,
+        0x00, 0x00,
+        0x00, 0x01,
+        0x00, 0x60
+    ];
+
+    let trackHeader = [
+        0x4D, 0x54, 0x72, 0x6B,
+        (track.length >> 24) & 255,
+        (track.length >> 16) & 255,
+        (track.length >> 8) & 255,
+        track.length & 255
+    ];
+
+    return new Uint8Array(
+        header.concat(trackHeader, track)
+    );
+}
+
+</script>
+
+</body>
+</html>
