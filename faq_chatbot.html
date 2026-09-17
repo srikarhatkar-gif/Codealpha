@@ -1,0 +1,310 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>FAQ Chatbot</title>
+
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f2f2f2;
+            margin: 0;
+            padding: 30px;
+        }
+
+        .container {
+            width: 80%;
+            max-width: 700px;
+            margin: auto;
+            background-color: white;
+            padding: 25px;
+            border-radius: 10px;
+            box-shadow: 0 0 10px gray;
+        }
+
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+
+        .chat-box {
+            height: 350px;
+            overflow-y: auto;
+            border: 1px solid #ccc;
+            padding: 15px;
+            margin-bottom: 15px;
+            background-color: #fafafa;
+        }
+
+        .bot {
+            background-color: #e1f5fe;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+        }
+
+        .user {
+            background-color: #e8f5e9;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 8px;
+            text-align: right;
+        }
+
+        input {
+            width: 70%;
+            padding: 12px;
+            font-size: 16px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+
+        button {
+            padding: 12px 20px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h1>FAQ Chatbot</h1>
+
+    <div class="chat-box" id="chatBox">
+
+        <div class="bot">
+            <b>Bot:</b> Hello! Ask me a question about our product.
+        </div>
+
+    </div>
+
+    <input type="text" id="userQuestion"
+           placeholder="Type your question...">
+
+    <button onclick="askQuestion()">Ask</button>
+
+</div>
+
+
+<script>
+
+    // FAQ data
+    let faqs = [
+
+        {
+            question: "What is this product?",
+            answer: "This is an FAQ chatbot that answers frequently asked questions."
+        },
+
+        {
+            question: "How can I create an account?",
+            answer: "Click on the Sign Up button and enter your details to create an account."
+        },
+
+        {
+            question: "How can I reset my password?",
+            answer: "Click on Forgot Password and follow the instructions to reset your password."
+        },
+
+        {
+            question: "How can I contact support?",
+            answer: "You can contact our support team through the Help or Contact Us section."
+        },
+
+        {
+            question: "Is this product free?",
+            answer: "Yes, the basic version of this product is free to use."
+        },
+
+        {
+            question: "How do I login?",
+            answer: "Enter your registered email and password and click the Login button."
+        },
+
+        {
+            question: "Can I use this on mobile?",
+            answer: "Yes, the chatbot can be used on mobile phones and computers."
+        },
+
+        {
+            question: "What should I do if I forget my password?",
+            answer: "Use the Forgot Password option to create a new password."
+        }
+
+    ];
+
+
+    // Text preprocessing
+    function preprocess(text) {
+
+        text = text.toLowerCase();
+
+        // Remove special characters
+        text = text.replace(/[^a-zA-Z0-9 ]/g, "");
+
+        // Convert sentence into words
+        let words = text.split(" ");
+
+        // Remove empty words
+        let cleanWords = [];
+
+        for (let i = 0; i < words.length; i++) {
+
+            if (words[i] != "") {
+                cleanWords.push(words[i]);
+            }
+
+        }
+
+        return cleanWords;
+    }
+
+
+    // Calculate similarity
+    function similarity(question1, question2) {
+
+        let words1 = preprocess(question1);
+        let words2 = preprocess(question2);
+
+        let commonWords = 0;
+
+        for (let i = 0; i < words1.length; i++) {
+
+            for (let j = 0; j < words2.length; j++) {
+
+                if (words1[i] == words2[j]) {
+                    commonWords++;
+                    break;
+                }
+
+            }
+
+        }
+
+        if (words1.length == 0) {
+            return 0;
+        }
+
+        return commonWords / words1.length;
+    }
+
+
+    // Find best FAQ
+    function findBestFAQ(userQuestion) {
+
+        let bestFAQ = null;
+        let bestScore = 0;
+
+        for (let i = 0; i < faqs.length; i++) {
+
+            let score =
+                similarity(userQuestion, faqs[i].question);
+
+            if (score > bestScore) {
+
+                bestScore = score;
+                bestFAQ = faqs[i];
+
+            }
+
+        }
+
+        return {
+            faq: bestFAQ,
+            score: bestScore
+        };
+    }
+
+
+    // Ask question
+    function askQuestion() {
+
+        let input =
+            document.getElementById("userQuestion");
+
+        let userQuestion = input.value.trim();
+
+        if (userQuestion == "") {
+
+            alert("Please enter a question.");
+
+            return;
+        }
+
+
+        // Display user question
+        let chatBox =
+            document.getElementById("chatBox");
+
+        let userMessage =
+            document.createElement("div");
+
+        userMessage.className = "user";
+
+        userMessage.innerHTML =
+            "<b>You:</b> " + userQuestion;
+
+        chatBox.appendChild(userMessage);
+
+
+        // Find best answer
+        let result =
+            findBestFAQ(userQuestion);
+
+
+        let botMessage =
+            document.createElement("div");
+
+        botMessage.className = "bot";
+
+
+        if (result.faq != null && result.score >= 0.3) {
+
+            botMessage.innerHTML =
+                "<b>Bot:</b> " + result.faq.answer;
+
+        }
+        else {
+
+            botMessage.innerHTML =
+                "<b>Bot:</b> Sorry, I could not find a suitable answer. Please try asking another question.";
+
+        }
+
+
+        chatBox.appendChild(botMessage);
+
+
+        // Clear input
+        input.value = "";
+
+        // Scroll to bottom
+        chatBox.scrollTop =
+            chatBox.scrollHeight;
+    }
+
+
+    // Press Enter to ask
+    document.getElementById("userQuestion")
+        .addEventListener("keypress", function(event) {
+
+            if (event.key === "Enter") {
+                askQuestion();
+            }
+
+        });
+
+</script>
+
+</body>
+</html>
